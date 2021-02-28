@@ -3,3 +3,5 @@ datasets/
 .ipynb_checkpoints/
 __pycache__/
 save/
+.idea/
+.DS_Store
