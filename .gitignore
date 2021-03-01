@@ -1,4 +1,4 @@
 *.tar.gz
 datasets/
-data/
+data/*
 pretty*
