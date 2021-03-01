@@ -2,3 +2,6 @@
 datasets/
 data/*
 pretty*
+save/*
+.ipynb_checkpoints/
+__pycache__/

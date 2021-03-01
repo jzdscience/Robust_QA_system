@@ -244,60 +244,85 @@ def get_dataset(args, datasets, data_dir, tokenizer, split_name):
     datasets = datasets.split(',')
     dataset_dict = None
     dataset_name=''
+    # iterate strings of datasets (merged together)
     for dataset in datasets:
         dataset_name += f'_{dataset}'
         dataset_dict_curr = util.read_squad(f'{data_dir}/{dataset}')
+        ## adding encoding from dataset to dictionary
         dataset_dict = util.merge(dataset_dict, dataset_dict_curr)
     data_encodings = read_and_process(args, tokenizer, dataset_dict, data_dir, dataset_name, split_name)
     return util.QADataset(data_encodings, train=(split_name=='train')), dataset_dict
 
+## this is the main function
 def main():
     # define parser and arguments
     args = get_train_test_args()
 
     util.set_seed(args.seed)
+    ## it is from hugging face
     model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")
+    
+    # tokenizer is distilBertTokenizer instance
+    
     tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
-
+    # if training 
     if args.do_train:
         if not os.path.exists(args.save_dir):
             os.makedirs(args.save_dir)
         args.save_dir = util.get_save_dir(args.save_dir, args.run_name)
+        # save log for tensorboard
         log = util.get_logger(args.save_dir, 'log_train')
         log.info(f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}')
         log.info("Preparing Training Data...")
         args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        
+        # initialize Trainer instance
         trainer = Trainer(args, log)
+        
+        # get_dataset --> read_and_process --> prepare_train_data (provide encoding/tokenization): return a QAdataset instance
         train_dataset, _ = get_dataset(args, args.train_datasets, args.train_dir, tokenizer, 'train')
         log.info("Preparing Validation Data...")
         val_dataset, val_dict = get_dataset(args, args.train_datasets, args.val_dir, tokenizer, 'val')
+        
+        # create data iterable
         train_loader = DataLoader(train_dataset,
                                 batch_size=args.batch_size,
                                 sampler=RandomSampler(train_dataset))
         val_loader = DataLoader(val_dataset,
                                 batch_size=args.batch_size,
                                 sampler=SequentialSampler(val_dataset))
+        #call trainer to train
         best_scores = trainer.train(model, train_loader, val_loader, val_dict)
     if args.do_eval:
         args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         split_name = 'test' if 'test' in args.eval_dir else 'validation'
         log = util.get_logger(args.save_dir, f'log_{split_name}')
         trainer = Trainer(args, log)
+        
+        # load model  from checkpoint
         checkpoint_path = os.path.join(args.save_dir, 'checkpoint')
         model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
         model.to(args.device)
+        
+        # load the test dataset
         eval_dataset, eval_dict = get_dataset(args, args.eval_datasets, args.eval_dir, tokenizer, split_name)
         eval_loader = DataLoader(eval_dataset,
                                  batch_size=args.batch_size,
                                  sampler=SequentialSampler(eval_dataset))
+        
+        
         eval_preds, eval_scores = trainer.evaluate(model, eval_loader,
                                                    eval_dict, return_preds=True,
                                                    split=split_name)
+        # Write log file
+        ## print the EM; F1 in the log_test
         results_str = ', '.join(f'{k}: {v:05.2f}' for k, v in eval_scores.items())
         log.info(f'Eval {results_str}')
-        # Write submission file
+        
         sub_path = os.path.join(args.save_dir, split_name + '_' + args.sub_file)
         log.info(f'Writing submission file to {sub_path}...')
+        
+        # write result to test_
         with open(sub_path, 'w', newline='', encoding='utf-8') as csv_fh:
             csv_writer = csv.writer(csv_fh, delimiter=',')
             csv_writer.writerow(['Id', 'Predicted'])
