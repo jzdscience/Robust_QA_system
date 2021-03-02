@@ -267,6 +267,8 @@ def main():
         log.info(f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}')
         log.info("Preparing Training Data...")
         args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+       #  checkpoint_path = os.path.join(args.checkpoint_dir, 'checkpoint')
+       #  model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
         trainer = Trainer(args, log)
         train_dataset, _ = get_dataset(args, args.train_datasets, args.train_dir, tokenizer, 'train')
         log.info("Preparing Validation Data...")
