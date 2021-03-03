@@ -8,13 +8,14 @@
 #SBATCH --output=adversarial_run.out
 source ~/.bashrc
 conda activate robustqa
-echo "this is good"
+
 python  main.py \
          --epochs 2 \
-         --batch_size 16 \
+         --batch_size 32 \
          --lr 3e-5 \
          --do_lower_case \
          --use_cuda \
          --do_valid \
          --adv \
-         --dis_lambda 0.01 
+         --dis_lambda 0.01 \
+         --debug

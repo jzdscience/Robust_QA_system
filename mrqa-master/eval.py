@@ -48,6 +48,7 @@ def eval_qa(model, file_path, prediction_file, args, tokenizer, batch_size=50):
             seg_ids = seg_ids.cuda(args.gpu, non_blocking=True)
 
         with torch.no_grad():
+            #                                        probably call the foward: else in DomainQA class???
             batch_start_logits, batch_end_logits = model(input_ids, seg_ids, input_mask)
             batch_size = batch_start_logits.size(0)
         for i in range(batch_size):

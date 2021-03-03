@@ -17,6 +17,9 @@ from args import get_train_test_args
 
 from tqdm import tqdm
 
+## customized
+# import adv_model.model as adv_model
+
 def prepare_eval_data(dataset_dict, tokenizer):
     tokenized_examples = tokenizer(dataset_dict['question'],
                                    dataset_dict['context'],
@@ -210,7 +213,7 @@ class Trainer():
                     attention_mask = batch['attention_mask'].to(device)
                     start_positions = batch['start_positions'].to(device)
                     end_positions = batch['end_positions'].to(device)
-                    outputs = model(input_ids, attention_mask=attention_mask,
+                    outputs = model(input_ids, attention_mask=attention_mask, ## will give error miss token_type_ids
                                     start_positions=start_positions,
                                     end_positions=end_positions)
                     loss = outputs[0]
@@ -260,7 +263,16 @@ def main():
 
     util.set_seed(args.seed)
     ## it is from hugging face
-    model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")
+    if args.adv_training:
+        model = adv_model.DomainQA(num_classes=3, 
+                                   hidden_size=768,
+                                   num_layers=3, 
+                                   dropout=0.1, 
+                                   dis_lambda=0.5,
+                                   concat=False, 
+                                   anneal=False)
+    else:
+        model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")
     
     # tokenizer is distilBertTokenizer instance
     

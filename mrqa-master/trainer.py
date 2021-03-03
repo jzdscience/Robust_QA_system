@@ -351,7 +351,8 @@ class AdvTrainer(BaseTrainer):
             self.args.rank = self.args.rank * ngpus_per_node + gpu
             dist.init_process_group(backend=self.args.dist_backend, init_method=self.args.dist_url,
                                     world_size=self.args.world_size, rank=self.args.rank)
-
+        
+        ## initilize DomainQA class
         self.model = DomainQA(self.args.bert_model, self.args.num_classes,
                               self.args.hidden_size, self.args.num_layers,
                               self.args.dropout, self.args.dis_lambda,
@@ -420,7 +421,9 @@ class AdvTrainer(BaseTrainer):
                         seg_ids = seg_ids.cuda(self.args.gpu, non_blocking=True)
                         start_positions = start_positions.cuda(self.args.gpu, non_blocking=True)
                         end_positions = end_positions.cuda(self.args.gpu, non_blocking=True)
-
+                   
+                    ## call DomaniQA's foward function
+                    ##                            seg_ids = token_type_ids
                     qa_loss = self.model(input_ids, seg_ids, input_mask,
                                          start_positions, end_positions, labels,
                                          dtype="qa",

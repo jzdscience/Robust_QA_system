@@ -1,4 +1,4 @@
-/var/spool/slurm/d/job04469/slurm_script: 9: /var/spool/slurm/d/job04469/slurm_script: source: not found
+/var/spool/slurm/d/job04502/slurm_script: 9: /var/spool/slurm/d/job04502/slurm_script: source: not found
 
 CommandNotFoundError: Your shell has not been properly configured to use 'conda activate'.
 To initialize your shell, run
@@ -22,23 +22,23 @@ this is good
 
 Start data preprocessing with multiprocessing.
 Number of data set: 6
-TriviaQA.jsonl.gz
-Starting new HTTPS connection (1): s3.amazonaws.com:443
 NaturalQuestions.jsonl.gz
+Starting new HTTPS connection (1): s3.amazonaws.com:443
+TriviaQA.jsonl.gz
 Starting new HTTPS connection (1): s3.amazonaws.com:443
 NewsQA.jsonl.gz
 Starting new HTTPS connection (1): s3.amazonaws.com:443
 https://s3.amazonaws.com:443 "HEAD /models.huggingface.co/bert/bert-base-uncased-vocab.txt HTTP/1.1" 200 0
 https://s3.amazonaws.com:443 "HEAD /models.huggingface.co/bert/bert-base-uncased-vocab.txt HTTP/1.1" 200 0
+loading vocabulary file https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt from cache at /home/zhanj289/.pytorch_pretrained_bert/26bc1ad6c0ac742e9b52263248f6d0f00068293b33709fae12320c0e35ccfbbb.542ce4285a40d23a559526243235df47c5f75c197f04f37d1a0c124c32c9a084
+loading vocabulary file https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt from cache at /home/zhanj289/.pytorch_pretrained_bert/26bc1ad6c0ac742e9b52263248f6d0f00068293b33709fae12320c0e35ccfbbb.542ce4285a40d23a559526243235df47c5f75c197f04f37d1a0c124c32c9a084
 https://s3.amazonaws.com:443 "HEAD /models.huggingface.co/bert/bert-base-uncased-vocab.txt HTTP/1.1" 200 0
 loading vocabulary file https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt from cache at /home/zhanj289/.pytorch_pretrained_bert/26bc1ad6c0ac742e9b52263248f6d0f00068293b33709fae12320c0e35ccfbbb.542ce4285a40d23a559526243235df47c5f75c197f04f37d1a0c124c32c9a084
-loading vocabulary file https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt from cache at /home/zhanj289/.pytorch_pretrained_bert/26bc1ad6c0ac742e9b52263248f6d0f00068293b33709fae12320c0e35ccfbbb.542ce4285a40d23a559526243235df47c5f75c197f04f37d1a0c124c32c9a084
-loading vocabulary file https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt from cache at /home/zhanj289/.pytorch_pretrained_bert/26bc1ad6c0ac742e9b52263248f6d0f00068293b33709fae12320c0e35ccfbbb.542ce4285a40d23a559526243235df47c5f75c197f04f37d1a0c124c32c9a084
-HotpotQA.jsonl.gz
-Starting new HTTPS connection (1): s3.amazonaws.com:443
 SQuAD.jsonl.gz
 Starting new HTTPS connection (1): s3.amazonaws.com:443
 SearchQA.jsonl.gz
+Starting new HTTPS connection (1): s3.amazonaws.com:443
+HotpotQA.jsonl.gz
 Starting new HTTPS connection (1): s3.amazonaws.com:443
 https://s3.amazonaws.com:443 "HEAD /models.huggingface.co/bert/bert-base-uncased-vocab.txt HTTP/1.1" 200 0
 loading vocabulary file https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt from cache at /home/zhanj289/.pytorch_pretrained_bert/26bc1ad6c0ac742e9b52263248f6d0f00068293b33709fae12320c0e35ccfbbb.542ce4285a40d23a559526243235df47c5f75c197f04f37d1a0c124c32c9a084
@@ -51,6 +51,7 @@ Set random seed as 2019
 Starting new HTTPS connection (1): s3.amazonaws.com:443
 https://s3.amazonaws.com:443 "HEAD /models.huggingface.co/bert/bert-base-uncased-vocab.txt HTTP/1.1" 200 0
 loading vocabulary file https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt from cache at /home/zhanj289/.pytorch_pretrained_bert/26bc1ad6c0ac742e9b52263248f6d0f00068293b33709fae12320c0e35ccfbbb.542ce4285a40d23a559526243235df47c5f75c197f04f37d1a0c124c32c9a084
+Debugging mode on.
 Number of data set:6
 Loading NaturalQuestions file as pkl...
 Loading NewsQA file as pkl...
@@ -61,7 +62,7 @@ Loading HotpotQA file as pkl...
 Starting new HTTPS connection (1): s3.amazonaws.com:443
 https://s3.amazonaws.com:443 "HEAD /models.huggingface.co/bert/bert-base-uncased.tar.gz HTTP/1.1" 200 0
 loading archive file https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased.tar.gz from cache at /home/zhanj289/.pytorch_pretrained_bert/9c41111e2de84547a463fd39217199738d1e3deb72d4fec4399e6e241983c6f0.ae3cef932725ca7a30cdcb93fc6e09150a55e2a130ec7af63975a16c153ae2ba
-extracting archive file /home/zhanj289/.pytorch_pretrained_bert/9c41111e2de84547a463fd39217199738d1e3deb72d4fec4399e6e241983c6f0.ae3cef932725ca7a30cdcb93fc6e09150a55e2a130ec7af63975a16c153ae2ba to temp dir /tmp/tmp13478cqe
+extracting archive file /home/zhanj289/.pytorch_pretrained_bert/9c41111e2de84547a463fd39217199738d1e3deb72d4fec4399e6e241983c6f0.ae3cef932725ca7a30cdcb93fc6e09150a55e2a130ec7af63975a16c153ae2ba to temp dir /tmp/tmpsnmwfw7d
 Model config {
   "attention_probs_dropout_prob": 0.1,
   "hidden_act": "gelu",
@@ -80,4 +81,4 @@ Model config {
 Set random seed as 2019
 /home/zhanj289/cs224n_robust_qa/mrqa-master/trainer.py:331: UserWarning: You have chosen to seed training. This will turn on the CUDNN deterministic setting, which can slow down your training considerably! You may see unexpected behavior when restarting from checkpoints.
   warnings.warn('You have chosen to seed training. '
-slurmstepd: error: *** JOB 4469 ON spcd-usw2-01700 CANCELLED AT 2021-03-01T22:37:45 ***
+slurmstepd: error: *** JOB 4502 ON spcd-usw2-01700 CANCELLED AT 2021-03-03T00:20:30 ***
