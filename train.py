@@ -291,11 +291,11 @@ class Trainer():
                 attention_mask = batch['attention_mask'].to(device)
                 batch_size = len(input_ids)
                 
-                outputs = model(input_ids, attention_mask=attention_mask)
+#                 outputs = model(input_ids, attention_mask=attention_mask)
                 # Forward
-                start_logits, end_logits = outputs.start_logits, outputs.end_logits
+#                 start_logits, end_logits = outputs.start_logits, outputs.end_logits
                 # Forward
-#                 start_logits, end_logits = model(input_ids, attention_mask=attention_mask)
+                start_logits, end_logits = model(input_ids, attention_mask=attention_mask)
                 # TODO: compute loss
 
                 all_start_logits.append(start_logits)
@@ -367,7 +367,7 @@ class Trainer():
                                          start_positions, end_positions, labels = None, 
                                          dtype="qa")
         
-                    print('qa_loss', qa_loss) ## 0-d tensor, seems right
+#                     print('qa_loss', qa_loss) ## 0-d tensor, seems right
             
                     qa_loss = qa_loss.mean()
                     qa_loss.backward()
@@ -409,7 +409,7 @@ class Trainer():
                             best_scores = curr_score
 #                             self.save(model.bert)  ## ?????????????????? should I save this way?
                             ## not sure how to save as BERT pretrained model
-                            torch.save(model, self.path)
+                            torch.save(model, self.path + '/pytorch_model.bin')
                     global_idx += 1
         return best_scores                    
 
@@ -504,7 +504,14 @@ def main():
         
         ### should I replace the model here????
         #########
-        model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
+        if args.adv_training:
+            if torch.cuda.is_available():
+                model = torch.load(checkpoint_path + '/pytorch_model.bin')
+            else:
+                model = torch.load(checkpoint_path + '/pytorch_model.bin', map_location=torch.device('cpu'))
+                
+        else:    
+            model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
         #########
         model.to(args.device)
         
