@@ -9,4 +9,4 @@
 source ~/.bashrc
 conda activate robustqa
 
-python train.py --do-eval --run-name adv_eval --visualize-predictions --adv-training --eval-dir datasets/oodomain_val --save-dir save/adv_train-03
+python train.py --do-eval --run-name adv_eval --visualize-predictions --adv-training --eval-dir datasets/oodomain_val --save-dir save/adv_train-04
