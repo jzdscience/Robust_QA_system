@@ -407,7 +407,9 @@ class Trainer():
                                            num_visuals=self.num_visuals)
                         if curr_score['F1'] >= best_scores['F1']:
                             best_scores = curr_score
-                            self.save(model.bert)
+#                             self.save(model.bert)  ## ?????????????????? should I save this way?
+                            ## not sure how to save as BERT pretrained model
+                            torch.save(model, self.path)
                     global_idx += 1
         return best_scores                    
 
@@ -501,7 +503,9 @@ def main():
         checkpoint_path = os.path.join(args.save_dir, 'checkpoint')
         
         ### should I replace the model here????
+        #########
         model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
+        #########
         model.to(args.device)
         
         # load the test dataset
