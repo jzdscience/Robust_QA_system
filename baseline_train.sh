@@ -5,7 +5,7 @@
 #SBATCH --mail-user=ju.zhang.jz1@roche.com 
 #SBATCH --mail-type=ALL
 #SBATCH --job-name="nlp_qa"
-#SBATCH --output=baseline.out
+#SBATCH --output=baseline_train.out
 source ~/.bashrc
 conda activate robustqa
 echo "this is good"

@@ -833,6 +833,5 @@ def iter_test(file_name):
 
 
 if __name__ == "__main__":
-    for file_name in ['SQuAD']:
-#     for file_name in ['HotpotQA', 'NaturalQuestions', 'NewsQA', 'SearchQA', 'SQuAD', 'TriviaQA']:
+    for file_name in ['HotpotQA', 'NaturalQuestions', 'NewsQA', 'SearchQA', 'SQuAD', 'TriviaQA']:
         iter_test(file_name)

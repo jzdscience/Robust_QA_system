@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 # from pytorch_pretrained_bert import BertModel, BertConfig
+# from utils import kl_coef
 from utils import kl_coef
 
 from transformers import DistilBertForQuestionAnswering
@@ -36,7 +37,7 @@ class DomainDiscriminator(nn.Module):
 
 
 class DomainQA(nn.Module):
-    def __init__(self, bert_name_or_config = "bert-base-uncased", num_classes=6, hidden_size=768,
+    def __init__(self, bert_name_or_config = "distilbert-base-uncased", num_classes=6, hidden_size=768,
                  num_layers=3, dropout=0.1, dis_lambda=0.5, concat=False, anneal=False):
         super(DomainQA, self).__init__()
         
@@ -78,6 +79,8 @@ class DomainQA(nn.Module):
             # not sure what is this else for, probably evaluation??
 #             sequence_output, _ = self.bert(input_ids,  attention_mask)
             _, _, hidden_states = self.bert(input_ids,  attention_mask, return_dict = False)
+            # try: take the last hidden states
+            sequence_output = hidden_states[-1]
             #              768*2         16*384*768     
             logits = self.qa_outputs(sequence_output)
             start_logits, end_logits = logits.split(1, dim=-1)

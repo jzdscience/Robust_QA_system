@@ -5,8 +5,8 @@
 #SBATCH --mail-user=ju.zhang.jz1@roche.com 
 #SBATCH --mail-type=ALL
 #SBATCH --job-name="nlp_qa"
-#SBATCH --output=baseline.out
+#SBATCH --output=baseline_eval.out
 source ~/.bashrc
 conda activate robustqa
-echo "this is good"
-python train.py --do-eval --save-dir save/baseline-05
+
+python train.py --do-eval --save-dir save/baseline-01 --eval-dir datasets/oodomain_val --visualize-predictions 

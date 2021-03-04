@@ -177,7 +177,7 @@ class QADataset(Dataset):
         self.encodings = encodings
         self.keys = ['input_ids', 'attention_mask']
         if train:
-            self.keys += ['start_positions', 'end_positions']
+            self.keys += ['start_positions', 'end_positions', 'labels']
         assert(all(key in self.encodings for key in self.keys))
 
     def __getitem__(self, idx):
@@ -187,10 +187,11 @@ class QADataset(Dataset):
         return len(self.encodings['input_ids'])
 
 def read_squad(path):
+    document_id = path[-4:]
     path = Path(path)
     with open(path, 'rb') as f:
         squad_dict = json.load(f)
-    data_dict = {'question': [], 'context': [], 'id': [], 'answer': []}
+    data_dict = {'question': [], 'context': [], 'id': [], 'answer': [], 'doc': []}
     for group in squad_dict['data']:
         for passage in group['paragraphs']:
             context = passage['context']
@@ -200,28 +201,42 @@ def read_squad(path):
                     data_dict['question'].append(question)
                     data_dict['context'].append(context)
                     data_dict['id'].append(qa['id'])
+                    ###
+                    data_dict['doc'].append(document_id)
                 else:
                     for answer in  qa['answers']:
                         data_dict['question'].append(question)
                         data_dict['context'].append(context)
                         data_dict['id'].append(qa['id'])
                         data_dict['answer'].append(answer)
+                        ###
+                        data_dict['doc'].append(document_id)
+                        
     id_map = ddict(list)
     for idx, qid in enumerate(data_dict['id']):
         id_map[qid].append(idx)
 
-    data_dict_collapsed = {'question': [], 'context': [], 'id': []}
+
+    data_dict_collapsed = {'question': [], 'context': [], 'id': [], 'doc': []}
     if data_dict['answer']:
         data_dict_collapsed['answer'] = []
     for qid in id_map:
+        ## make qid like 'sdasfdsf2324sdfsff' to index (1,2,3,4....)
         ex_ids = id_map[qid]
         data_dict_collapsed['question'].append(data_dict['question'][ex_ids[0]])
         data_dict_collapsed['context'].append(data_dict['context'][ex_ids[0]])
         data_dict_collapsed['id'].append(qid)
+        #
+        data_dict_collapsed['doc'].append(data_dict['doc'][0])
+        
         if data_dict['answer']:
             all_answers = [data_dict['answer'][idx] for idx in ex_ids]
             data_dict_collapsed['answer'].append({'answer_start': [answer['answer_start'] for answer in all_answers],
                                                   'text': [answer['text'] for answer in all_answers]})
+        
+#     print(len(data_dict_collapsed['id']))
+#     print(len(data_dict_collapsed['doc']))
+    
     return data_dict_collapsed
 
 def add_token_positions(encodings, answers, tokenizer):
@@ -464,3 +479,10 @@ def compute_f1(a_gold, a_pred):
     recall = 1.0 * num_same / len(gold_toks)
     f1 = (2 * precision * recall) / (precision + recall)
     return f1
+
+
+def kl_coef(i):
+    # coef for KL annealing
+    # reaches 1 at i = 22000
+    # https://github.com/kefirski/pytorch_RVAE/blob/master/utils/functional.py
+    return (math.tanh((i - 3500) / 1000) + 1) / 2

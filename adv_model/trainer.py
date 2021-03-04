@@ -14,7 +14,7 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
 
-from pytorch_pretrained_bert import BertForQuestionAnswering
+# from pytorch_pretrained_bert import BertForQuestionAnswering
 from pytorch_pretrained_bert import BertTokenizer
 from pytorch_pretrained_bert.optimization import BertAdam
 
@@ -145,9 +145,11 @@ class BaseTrainer(object):
             else:
                 print("processing {} file".format(data_name))
                 file_path = os.path.join(train_folder, filename)
-
+                
+                # every file is a train example
                 train_examples = read_squad_examples(file_path, debug=debug)
-
+                
+                # every feature is from a train example (Inputfeature class)
                 train_features = convert_examples_to_features(
                     examples=train_examples,
                     tokenizer=self.tokenizer,
@@ -157,7 +159,8 @@ class BaseTrainer(object):
                     is_training=True,
                     skip_no_ans=self.args.skip_no_ans
                 )
-
+                
+                # 
                 features_lst.append(train_features)
 
                 # Save feature lst as pickle (For reuse & fast loading)
@@ -410,6 +413,10 @@ class AdvTrainer(BaseTrainer):
                     #labels torch.Size([16])
                     
                     input_ids, input_mask, seg_ids, start_positions, end_positions, labels = batch
+                    
+                    print(labels.size())
+                    
+                    print(labels)
 
                     # remove unnecessary pad token
                     seq_len = torch.sum(torch.sign(input_ids), 1)

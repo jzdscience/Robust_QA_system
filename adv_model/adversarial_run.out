@@ -71,3 +71,4 @@ Some weights of DistilBertForQuestionAnswering were not initialized from the mod
 You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
 ['RACE.jsonl.gz', 'DuoRC.jsonl.gz', 'BioASQ.jsonl.gz', 'TextbookQA.jsonl.gz', 'RelationExtraction.jsonl.gz', 'DROP.jsonl.gz']
 Set random seed as 2019
+slurmstepd: error: *** JOB 4505 ON spcd-usw2-01701 CANCELLED AT 2021-03-03T04:48:37 ***

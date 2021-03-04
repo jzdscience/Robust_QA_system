@@ -18,7 +18,7 @@ from args import get_train_test_args
 from tqdm import tqdm
 
 ## customized
-# import adv_model.model as adv_model
+import advModel
 
 def prepare_eval_data(dataset_dict, tokenizer):
     tokenized_examples = tokenizer(dataset_dict['question'],
@@ -62,18 +62,34 @@ def prepare_train_data(dataset_dict, tokenizer):
                                    return_overflowing_tokens=True,
                                    return_offsets_mapping=True,
                                    padding='max_length')
+    # # 0 -14999 
+    ## 242304 
     sample_mapping = tokenized_examples["overflow_to_sample_mapping"]
+    # 0 -14999 
+    ## 242304 
     offset_mapping = tokenized_examples["offset_mapping"]
+    
+#     print(len(sample_mapping))
+#     print(len(offset_mapping))
 
     # Let's label those examples!
     tokenized_examples["start_positions"] = []
     tokenized_examples["end_positions"] = []
     tokenized_examples['id'] = []
+    tokenized_examples['labels'] = []
+    
+    # add labels
+#     tokenized_examples['labels'] = []
+    
     inaccurate = 0
     for i, offsets in enumerate(tqdm(offset_mapping)):
         # We will label impossible answers with the index of the CLS token.
+#         print(len(tokenized_examples["input_ids"]))
+        
         input_ids = tokenized_examples["input_ids"][i]
         cls_index = input_ids.index(tokenizer.cls_token_id)
+        
+#         labels = dataset_dict['doc'][i]
 
         # Grab the sequence corresponding to that example (to know what is the context and what is the question).
         sequence_ids = tokenized_examples.sequence_ids(i)
@@ -85,6 +101,11 @@ def prepare_train_data(dataset_dict, tokenizer):
         start_char = answer['answer_start'][0]
         end_char = start_char + len(answer['text'][0])
         tokenized_examples['id'].append(dataset_dict['id'][sample_index])
+        
+        ## add labels
+        tokenized_examples['labels'].append(dataset_dict['doc'][sample_index])
+        
+        
         # Start token index of the current span in the text.
         token_start_index = 0
         while sequence_ids[token_start_index] != 1:
@@ -114,7 +135,15 @@ def prepare_train_data(dataset_dict, tokenizer):
             offset_en = offsets[tokenized_examples['end_positions'][-1]][1]
             if context[offset_st : offset_en] != answer['text'][0]:
                 inaccurate += 1
-
+    
+    # make the labels into integers
+    doc_map = {v: k for k,v in enumerate(set(dataset_dict['doc']))}
+    tokenized_examples['labels']  = [doc_map[ele] for ele in tokenized_examples['labels']]
+    
+#     print(len(set(tokenized_examples['labels'])))
+#     print(len(tokenized_examples['labels']))
+#     print(tokenized_examples['labels'][-10:])
+    
     total = len(tokenized_examples['id'])
     print(f"Preprocessing not completely accurate for {inaccurate}/{total} instances")
     return tokenized_examples
@@ -154,7 +183,7 @@ class Trainer():
     def save(self, model):
         model.save_pretrained(self.path)
 
-    def evaluate(self, model, data_loader, data_dict, return_preds=False, split='validation'):
+    def evaluate_baseline(self, model, data_loader, data_dict, return_preds=False, split='validation'):
         device = self.device
 
         model.eval()
@@ -195,7 +224,7 @@ class Trainer():
             return preds, results
         return results
 
-    def train(self, model, train_dataloader, eval_dataloader, val_dict):
+    def train_baseline(self, model, train_dataloader, eval_dataloader, val_dict):
         device = self.device
         model.to(device)
         optim = AdamW(model.parameters(), lr=self.lr)
@@ -213,18 +242,22 @@ class Trainer():
                     attention_mask = batch['attention_mask'].to(device)
                     start_positions = batch['start_positions'].to(device)
                     end_positions = batch['end_positions'].to(device)
-                    outputs = model(input_ids, attention_mask=attention_mask, ## will give error miss token_type_ids
+                    
+                    # tuple of 2
+                    outputs = model(input_ids, attention_mask=attention_mask, 
                                     start_positions=start_positions,
                                     end_positions=end_positions)
                     loss = outputs[0]
-                    loss.backward()
+  
+                    loss.backward()  #added sum here
+                    
                     optim.step()
                     progress_bar.update(len(input_ids))
                     progress_bar.set_postfix(epoch=epoch_num, NLL=loss.item())
                     tbx.add_scalar('train/NLL', loss.item(), global_idx)
                     if (global_idx % self.eval_every) == 0:
                         self.log.info(f'Evaluating at step {global_idx}...')
-                        preds, curr_score = self.evaluate(model, eval_dataloader, val_dict, return_preds=True)
+                        preds, curr_score = self.evaluate_baseline(model, eval_dataloader, val_dict, return_preds=True)
                         results_str = ', '.join(f'{k}: {v:05.2f}' for k, v in curr_score.items())
                         self.log.info('Visualizing in TensorBoard...')
                         for k, v in curr_score.items():
@@ -242,8 +275,152 @@ class Trainer():
                             self.save(model)
                     global_idx += 1
         return best_scores
+    
+    def evaluate_adv(self, model, data_loader, data_dict, return_preds=False, split='validation'):
+        device = self.device
+
+        model.eval()
+        pred_dict = {}
+        all_start_logits = []
+        all_end_logits = []
+        with torch.no_grad(), \
+                tqdm(total=len(data_loader.dataset)) as progress_bar:
+            for batch in data_loader:
+                # Setup for forward
+                input_ids = batch['input_ids'].to(device)
+                attention_mask = batch['attention_mask'].to(device)
+                batch_size = len(input_ids)
+                
+                outputs = model(input_ids, attention_mask=attention_mask)
+                # Forward
+                start_logits, end_logits = outputs.start_logits, outputs.end_logits
+                # Forward
+#                 start_logits, end_logits = model(input_ids, attention_mask=attention_mask)
+                # TODO: compute loss
+
+                all_start_logits.append(start_logits)
+                all_end_logits.append(end_logits)
+                progress_bar.update(batch_size)
+
+        # Get F1 and EM scores
+        start_logits = torch.cat(all_start_logits).cpu().numpy()
+        end_logits = torch.cat(all_end_logits).cpu().numpy()
+        preds = util.postprocess_qa_predictions(data_dict,
+                                                 data_loader.dataset.encodings,
+                                                 (start_logits, end_logits))
+        if split == 'validation':
+            results = util.eval_dicts(data_dict, preds)
+            results_list = [('F1', results['F1']),
+                            ('EM', results['EM'])]
+        else:
+            results_list = [('F1', -1.0),
+                            ('EM', -1.0)]
+        results = OrderedDict(results_list)
+        if return_preds:
+            return preds, results
+        return results
+    
+    def train_adv(self, model, train_dataloader, eval_dataloader, val_dict):
+        device = self.device
+        model.to(device)
+        qa_optimizer = AdamW(model.parameters(), lr=self.lr)
+        dis_optimizer = AdamW(model.parameters(), lr=self.lr)
+        global_idx = 0
+        best_scores = {'F1': -1.0, 'EM': -1.0}
+        tbx = SummaryWriter(self.save_dir)
+        
+        for epoch_num in range(self.num_epochs):
+            self.log.info(f'Epoch: {epoch_num}')
+            avg_qa_loss = 0
+            avg_dis_loss = 0
+            with torch.enable_grad(), tqdm(total=len(train_dataloader.dataset)) as progress_bar:
+                for batch in train_dataloader:
+#                     optim.zero_grad()
+                    model.train()
+                    input_ids = batch['input_ids'].to(device)
+                    attention_mask = batch['attention_mask'].to(device)
+                    start_positions = batch['start_positions'].to(device)
+                    end_positions = batch['end_positions'].to(device)
+                    
+                    labels = batch['labels'].to(device)
+                    
+                    # remove unnecessary pad token
+                    seq_len = torch.sum(torch.sign(input_ids), 1)
+                    max_len = torch.max(seq_len)
+
+                    input_ids = input_ids[:, :max_len].clone()
+                    attention_mask = attention_mask[:, :max_len].clone()
+#                     seg_ids = seg_ids[:, :max_len].clone()
+                    start_positions = start_positions.clone()
+                    end_positions = end_positions.clone()
+                    labels = labels.clone()
+
+#                     if self.args.use_cuda:
+#                         input_ids = input_ids.cuda(self.args.gpu, non_blocking=True)
+#                         input_mask = input_mask.cuda(self.args.gpu, non_blocking=True)
+#                         seg_ids = seg_ids.cuda(self.args.gpu, non_blocking=True)
+#                         start_positions = start_positions.cuda(self.args.gpu, non_blocking=True)
+#                         end_positions = end_positions.cuda(self.args.gpu, non_blocking=True)
+#                     all_labels.append(i * torch.ones_like(start_positions))
+    
+                    qa_loss = model(input_ids, attention_mask,
+                                         start_positions, end_positions, labels = None, 
+                                         dtype="qa")
+        
+                    print('qa_loss', qa_loss) ## 0-d tensor, seems right
+            
+                    qa_loss = qa_loss.mean()
+                    qa_loss.backward()
+
+                    # update qa model
+                    avg_qa_loss = self.cal_running_avg_loss(qa_loss.item(), avg_qa_loss)
+                    qa_optimizer.step()
+                    qa_optimizer.zero_grad()
+
+                    # update discriminator
+                    dis_loss = model(input_ids, attention_mask,
+                                          start_positions, end_positions, labels = labels, dtype="dis")
+                    dis_loss = dis_loss.mean()
+                    dis_loss.backward()
+                    avg_dis_loss = self.cal_running_avg_loss(dis_loss.item(), avg_dis_loss)
+                    dis_optimizer.step()
+                    dis_optimizer.zero_grad()
+
+                    progress_bar.update(len(input_ids))
+                    progress_bar.set_postfix(epoch=epoch_num, NLL=qa_loss.item())
+                    
+                    tbx.add_scalar('train/NLL', qa_loss.item(), global_idx)
+                    if (global_idx % self.eval_every) == 0:
+                        self.log.info(f'Evaluating at step {global_idx}...')
+                        preds, curr_score = self.evaluate_adv(model, eval_dataloader, val_dict, return_preds=True)
+                        results_str = ', '.join(f'{k}: {v:05.2f}' for k, v in curr_score.items())
+                        self.log.info('Visualizing in TensorBoard...')
+                        for k, v in curr_score.items():
+                            tbx.add_scalar(f'val/{k}', v, global_idx)
+                        self.log.info(f'Eval {results_str}')
+                        if self.visualize_predictions:
+                            util.visualize(tbx,
+                                           pred_dict=preds,
+                                           gold_dict=val_dict,
+                                           step=global_idx,
+                                           split='val',
+                                           num_visuals=self.num_visuals)
+                        if curr_score['F1'] >= best_scores['F1']:
+                            best_scores = curr_score
+                            self.save(model.bert)
+                    global_idx += 1
+        return best_scores                    
+
+    @staticmethod
+    def cal_running_avg_loss(loss, running_avg_loss, decay=0.99):
+        if running_avg_loss == 0:
+            return loss
+        else:
+            running_avg_loss = running_avg_loss * decay + (1 - decay) * loss
+            return running_avg_loss    
 
 def get_dataset(args, datasets, data_dir, tokenizer, split_name):
+    # ['NewsQA', 'Squad', ...]
     datasets = datasets.split(',')
     dataset_dict = None
     dataset_name=''
@@ -251,6 +428,7 @@ def get_dataset(args, datasets, data_dir, tokenizer, split_name):
     for dataset in datasets:
         dataset_name += f'_{dataset}'
         dataset_dict_curr = util.read_squad(f'{data_dir}/{dataset}')
+
         ## adding encoding from dataset to dictionary
         dataset_dict = util.merge(dataset_dict, dataset_dict_curr)
     data_encodings = read_and_process(args, tokenizer, dataset_dict, data_dir, dataset_name, split_name)
@@ -264,7 +442,7 @@ def main():
     util.set_seed(args.seed)
     ## it is from hugging face
     if args.adv_training:
-        model = adv_model.DomainQA(num_classes=3, 
+        model = advModel.DomainQA(num_classes=3, 
                                    hidden_size=768,
                                    num_layers=3, 
                                    dropout=0.1, 
@@ -296,7 +474,7 @@ def main():
         log.info("Preparing Validation Data...")
         val_dataset, val_dict = get_dataset(args, args.train_datasets, args.val_dir, tokenizer, 'val')
         
-        # create data iterable
+        # create data iterable 
         train_loader = DataLoader(train_dataset,
                                 batch_size=args.batch_size,
                                 sampler=RandomSampler(train_dataset))
@@ -304,15 +482,25 @@ def main():
                                 batch_size=args.batch_size,
                                 sampler=SequentialSampler(val_dataset))
         #call trainer to train
-        best_scores = trainer.train(model, train_loader, val_loader, val_dict)
+        if args.adv_training: 
+            best_scores = trainer.train_adv(model, train_loader, val_loader, val_dict)
+        else:
+            best_scores = trainer.train_baseline(model, train_loader, val_loader, val_dict)
+        
     if args.do_eval:
         args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        
+        # if path contain test then split is test
+        
         split_name = 'test' if 'test' in args.eval_dir else 'validation'
         log = util.get_logger(args.save_dir, f'log_{split_name}')
+        
         trainer = Trainer(args, log)
         
         # load model  from checkpoint
         checkpoint_path = os.path.join(args.save_dir, 'checkpoint')
+        
+        ### should I replace the model here????
         model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
         model.to(args.device)
         
@@ -322,10 +510,14 @@ def main():
                                  batch_size=args.batch_size,
                                  sampler=SequentialSampler(eval_dataset))
         
-        
-        eval_preds, eval_scores = trainer.evaluate(model, eval_loader,
-                                                   eval_dict, return_preds=True,
-                                                   split=split_name)
+        if args.adv_training: 
+            eval_preds, eval_scores = trainer.evaluate_adv(model, eval_loader,
+                                                       eval_dict, return_preds=True,
+                                                       split=split_name)
+        else:
+            eval_preds, eval_scores = trainer.evaluate_baseline(model, eval_loader,
+                                                       eval_dict, return_preds=True,
+                                                       split=split_name)
         # Write log file
         ## print the EM; F1 in the log_test
         results_str = ', '.join(f'{k}: {v:05.2f}' for k, v in eval_scores.items())
