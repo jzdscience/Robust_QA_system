@@ -440,15 +440,15 @@ def get_dataset(args, datasets, data_dir, tokenizer, split_name):
 def main():
     # define parser and arguments
     args = get_train_test_args()
-
+    print(args)
     util.set_seed(args.seed)
     ## it is from hugging face
     if args.adv_training:
-        model = advModel.DomainQA(num_classes=3, 
+        model = advModel.DomainQA(num_classes= args.class_number,
                                    hidden_size=768,
                                    num_layers=3, 
                                    dropout=0.1, 
-                                   dis_lambda=0.5,
+                                   dis_lambda=args.dis_lambda,
                                    concat=False, 
                                    anneal=False)
     else:

@@ -9,4 +9,4 @@
 source ~/.bashrc
 conda activate robustqa
 
-python train.py --do-train --run-name adv_train --visualize-predictions --adv-training
+python train.py --do-train --run-name adv_train --visualize-predictions --adv-training --dis-lambda 0.4
