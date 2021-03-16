@@ -19,11 +19,13 @@ def get_train_test_args():
     parser.add_argument('--eval-datasets', type=str, default='race,relation_extraction,duorc') # have default
     parser.add_argument('--do-train', action='store_true')
     parser.add_argument('--do-eval', action='store_true')
+    parser.add_argument('--do-finetuning', action='store_true') #new
     parser.add_argument('--sub-file', type=str, default='') # have default
     parser.add_argument('--visualize-predictions', action='store_true')
-    parser.add_argument('--eval-every', type=int, default=5000)
-    parser.add_argument('--adv-training', action='store_true')
-    parser.add_argument('--class-number', type=int, default=3)
-    parser.add_argument('--dis-lambda', type=float, default=0.5)
+    parser.add_argument('--eval-every', type=int, default=5000)  # have default
+    parser.add_argument('--adv-training', action='store_true') 
+    parser.add_argument('--class-number', type=int, default=3)  # new, have default
+    parser.add_argument('--dis-lambda', type=float, default=0.5)  # new, have default
+    parser.add_argument('--freeze', action='store_true')   # new
     args = parser.parse_args()
     return args

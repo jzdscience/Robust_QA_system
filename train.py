@@ -442,26 +442,33 @@ def main():
     args = get_train_test_args()
     print(args)
     util.set_seed(args.seed)
-    ## it is from hugging face
-    if args.adv_training:
-        model = advModel.DomainQA(num_classes= args.class_number,
-                                   hidden_size=768,
-                                   num_layers=3, 
-                                   dropout=0.1, 
-                                   dis_lambda=args.dis_lambda,
-                                   concat=False, 
-                                   anneal=False)
-    else:
-        model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")
     
     # tokenizer is distilBertTokenizer instance
     
     tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
-    # if training 
+    
+    # if training, then start a new Domain QA model or a distrilBert Model
     if args.do_train:
+        print('fine tunning should not be here')
+        ## it is from hugging face
+        if args.adv_training:
+            model = advModel.DomainQA(num_classes= args.class_number,
+                                       hidden_size=768,
+                                       num_layers=3, 
+                                       dropout=0.1, 
+                                       dis_lambda=args.dis_lambda,
+                                       concat=False, 
+                                       anneal=False)
+        else:
+            model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")   
+        
+        # make save/ folder
         if not os.path.exists(args.save_dir):
             os.makedirs(args.save_dir)
+        
+        # get save/run_name_xxx folder
         args.save_dir = util.get_save_dir(args.save_dir, args.run_name)
+        
         # save log for tensorboard
         log = util.get_logger(args.save_dir, 'log_train')
         log.info(f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}')
@@ -488,6 +495,59 @@ def main():
             best_scores = trainer.train_adv(model, train_loader, val_loader, val_dict)
         else:
             best_scores = trainer.train_baseline(model, train_loader, val_loader, val_dict)
+            
+    if args.do_finetuning:
+        print('go to finetuning')
+        # save log for tensorboard
+        log = util.get_logger(args.save_dir, 'log_finetuning')
+        log.info(f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}')
+        log.info("Preparing Finetuning training Data...")
+        args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        
+        # load model  from checkpoint
+        checkpoint_path = os.path.join(args.save_dir, 'checkpoint')
+        
+        #########
+        if args.adv_training:
+            if torch.cuda.is_available():
+                model = torch.load(checkpoint_path + '/pytorch_model.bin')
+            else:
+                model = torch.load(checkpoint_path + '/pytorch_model.bin', map_location=torch.device('cpu'))
+                
+        else:    
+            model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
+        
+        ### trying to freeze all layers except for the QA output layer in fine tuning
+        if args.freeze is True:
+            print('freeze in finetuning')
+            for name, param in model.named_parameters():
+#                 if ('output' not in name) and ('discriminator.hidden_layers.3' not in name):
+                if ('output' not in name) and ('discriminator' not in name):
+                    param.requires_grad = False
+        
+        # initialize Trainer instance
+        trainer = Trainer(args, log)
+        
+        # get_dataset --> read_and_process --> prepare_train_data (provide encoding/tokenization): return a QAdataset instance
+        train_dataset, _ = get_dataset(args, args.train_datasets, args.train_dir, tokenizer, 'train')
+        
+        log.info("Preparing finetuning Validation Data...")
+        
+        val_dataset, val_dict = get_dataset(args, args.train_datasets, args.val_dir, tokenizer, 'val')
+        
+        # create data iterable 
+        train_loader = DataLoader(train_dataset,
+                                batch_size=args.batch_size,
+                                sampler=RandomSampler(train_dataset))
+        val_loader = DataLoader(val_dataset,
+                                batch_size=args.batch_size,
+                                sampler=SequentialSampler(val_dataset))
+        #call trainer to train
+        if args.adv_training: 
+            best_scores = trainer.train_adv(model, train_loader, val_loader, val_dict)
+        else:
+            best_scores = trainer.train_baseline(model, train_loader, val_loader, val_dict)
+        
         
     if args.do_eval:
         args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')

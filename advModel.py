@@ -19,12 +19,24 @@ class DomainDiscriminator(nn.Module):
                 input_dim = input_size
             else:
                 input_dim = hidden_size
-            hidden_layers.append(nn.Sequential(
-                nn.Linear(input_dim, hidden_size),
-                nn.ReLU(), nn.Dropout(dropout)
-            ))
-        hidden_layers.append(nn.Linear(hidden_size, num_classes))
+#             hidden_layers.append(nn.Sequential(   
+#                 nn.Linear(input_dim, hidden_size),
+# #                 nn.BatchNorm1d(num_features=hidden_size),
+#                 nn.ReLU(), 
+#                 nn.Dropout(dropout)
+#             ))
+#         hidden_layers.append(nn.Linear(hidden_size, num_classes))
+#         self.hidden_layers = nn.ModuleList(hidden_layers)
+
+            hidden_layers.append(nn.Sequential(OrderedDict([   
+                ('linear', nn.Linear(input_dim, hidden_size)),
+                ('relu', nn.ReLU()), 
+                ('drop', nn.Dropout(dropout))
+            ])))
+        hidden_layers.append(nn.Sequential(OrderedDict([  ('output', nn.Linear(hidden_size, num_classes))])))
         self.hidden_layers = nn.ModuleList(hidden_layers)
+            
+
 
     def forward(self, x):
         # forward pass
