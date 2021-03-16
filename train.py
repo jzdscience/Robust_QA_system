@@ -151,9 +151,51 @@ class Trainer():
     def save(self, model):
         model.save_pretrained(self.path)
 
-    def evaluate(self, model, data_loader, data_dict, return_preds=False, split='validation'):
+    def evaluate(self, models, data_loader, data_dict, return_preds=False, split='validation'):
         device = self.device
 
+        for model in models:
+            model.eval()
+        pred_dict = {}
+        all_start_logits = []
+        all_end_logits = []
+        with torch.no_grad(), \
+                tqdm(total=len(data_loader.dataset)) as progress_bar:
+            for batch in data_loader:
+                # Setup for forward
+                input_ids = batch['input_ids'].to(device)
+                attention_mask = batch['attention_mask'].to(device)
+                batch_size = len(input_ids)
+                outputs = [model(input_ids, attention_mask=attention_mask) for model in models]
+                # Forward
+                start_logits, end_logits = torch.round(sum([o.start_logits for o in outputs]) / len(outputs)), torch.round(sum([o.end_logits for o in outputs]) / len(outputs))
+                # TODO: compute loss
+
+                all_start_logits.append(start_logits)
+                all_end_logits.append(end_logits)
+                progress_bar.update(batch_size)
+
+        # Get F1 and EM scores
+        start_logits = torch.cat(all_start_logits).cpu().numpy()
+        end_logits = torch.cat(all_end_logits).cpu().numpy()
+        preds = util.postprocess_qa_predictions(data_dict,
+                                                 data_loader.dataset.encodings,
+                                                 (start_logits, end_logits))
+        if split == 'validation':
+            results = util.eval_dicts(data_dict, preds)
+            results_list = [('F1', results['F1']),
+                            ('EM', results['EM'])]
+        else:
+            results_list = [('F1', -1.0),
+                            ('EM', -1.0)]
+        results = OrderedDict(results_list)
+        if return_preds:
+            return preds, results
+        return results
+
+    def evaluate_orig(self, model, data_loader, data_dict, return_preds=False, split='validation'):
+        device = self.device
+        
         model.eval()
         pred_dict = {}
         all_start_logits = []
@@ -221,7 +263,7 @@ class Trainer():
                     tbx.add_scalar('train/NLL', loss.item(), global_idx)
                     if (global_idx % self.eval_every) == 0:
                         self.log.info(f'Evaluating at step {global_idx}...')
-                        preds, curr_score = self.evaluate(model, eval_dataloader, val_dict, return_preds=True)
+                        preds, curr_score = self.evaluate_orig(model, eval_dataloader, val_dict, return_preds=True)
                         results_str = ', '.join(f'{k}: {v:05.2f}' for k, v in curr_score.items())
                         self.log.info('Visualizing in TensorBoard...')
                         for k, v in curr_score.items():
@@ -267,8 +309,8 @@ def main():
         log.info(f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}')
         log.info("Preparing Training Data...")
         args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-       #  checkpoint_path = os.path.join(args.checkpoint_dir, 'checkpoint')
-       #  model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
+        checkpoint_path = os.path.join(args.checkpoint_dir, 'checkpoint')
+        model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
         trainer = Trainer(args, log)
         train_dataset, _ = get_dataset(args, args.train_datasets, args.train_dir, tokenizer, 'train')
         log.info("Preparing Validation Data...")
@@ -285,14 +327,18 @@ def main():
         split_name = 'test' if 'test' in args.eval_dir else 'validation'
         log = util.get_logger(args.save_dir, f'log_{split_name}')
         trainer = Trainer(args, log)
-        checkpoint_path = os.path.join(args.save_dir, 'checkpoint')
-        model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
-        model.to(args.device)
+        ckpt_dirs = args.checkpoint_dir.split(",")
+        models = []
+        for d in ckpt_dirs:
+            checkpoint_path = os.path.join(d, 'checkpoint')
+            model = DistilBertForQuestionAnswering.from_pretrained(checkpoint_path)
+            model.to(args.device)
+            models.append(model)
         eval_dataset, eval_dict = get_dataset(args, args.eval_datasets, args.eval_dir, tokenizer, split_name)
         eval_loader = DataLoader(eval_dataset,
                                  batch_size=args.batch_size,
                                  sampler=SequentialSampler(eval_dataset))
-        eval_preds, eval_scores = trainer.evaluate(model, eval_loader,
+        eval_preds, eval_scores = trainer.evaluate(models, eval_loader,
                                                    eval_dict, return_preds=True,
                                                    split=split_name)
         results_str = ', '.join(f'{k}: {v:05.2f}' for k, v in eval_scores.items())
