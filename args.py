@@ -8,8 +8,8 @@ def get_train_test_args():
     parser.add_argument('--num-visuals', type=int, default=10) # have default
     parser.add_argument('--seed', type=int, default=42) # have default
     parser.add_argument('--save-dir', type=str, default='save/') # have default
-    parser.add_argument('--train', action='store_true')
-    parser.add_argument('--eval', action='store_true')
+#     parser.add_argument('--train', action='store_true')
+#     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--train-datasets', type=str, default='squad,nat_questions,newsqa') # have default
     parser.add_argument('--run-name', type=str, default='multitask_distilbert') # have default
     parser.add_argument('--recompute-features', action='store_true') 
@@ -27,5 +27,6 @@ def get_train_test_args():
     parser.add_argument('--class-number', type=int, default=3)  # new, have default
     parser.add_argument('--dis-lambda', type=float, default=0.5)  # new, have default
     parser.add_argument('--freeze', action='store_true')   # new
+    parser.add_argument('--pretrained-model', type=str, default=None)   # new
     args = parser.parse_args()
     return args

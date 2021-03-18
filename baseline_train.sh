@@ -8,5 +8,5 @@
 #SBATCH --output=baseline_train.out
 source ~/.bashrc
 conda activate robustqa
-echo "this is good"
-python train.py --do-train --run-name baseline --visualize-predictions
+
+python train.py --do-train --run-name baseline --visualize-predictions --pretrained-model save/mlm_train-05/checkpoint

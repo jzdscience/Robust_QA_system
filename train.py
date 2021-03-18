@@ -64,6 +64,7 @@ def prepare_train_data(dataset_dict, tokenizer):
                                    padding='max_length')
     # # 0 -14999 
     ## 242304 
+
     sample_mapping = tokenized_examples["overflow_to_sample_mapping"]
     # 0 -14999 
     ## 242304 
@@ -78,9 +79,6 @@ def prepare_train_data(dataset_dict, tokenizer):
     tokenized_examples['id'] = []
     tokenized_examples['labels'] = []
     
-    # add labels
-#     tokenized_examples['labels'] = []
-    
     inaccurate = 0
     for i, offsets in enumerate(tqdm(offset_mapping)):
         # We will label impossible answers with the index of the CLS token.
@@ -92,6 +90,8 @@ def prepare_train_data(dataset_dict, tokenizer):
 #         labels = dataset_dict['doc'][i]
 
         # Grab the sequence corresponding to that example (to know what is the context and what is the question).
+        # 0 for tokens corresponding to words in the first sequence,
+        # 1 for tokens corresponding to words in the second sequence when a pair of sequences was jointly encoded.
         sequence_ids = tokenized_examples.sequence_ids(i)
 
         # One example can give several spans, this is the index of the example containing this span of text.
@@ -242,7 +242,7 @@ class Trainer():
                     attention_mask = batch['attention_mask'].to(device)
                     start_positions = batch['start_positions'].to(device)
                     end_positions = batch['end_positions'].to(device)
-                    
+#                     import pdb; pdb.set_trace()
                     # tuple of 2
                     outputs = model(input_ids, attention_mask=attention_mask, 
                                     start_positions=start_positions,
@@ -433,7 +433,9 @@ def get_dataset(args, datasets, data_dir, tokenizer, split_name):
 
         ## adding encoding from dataset to dictionary
         dataset_dict = util.merge(dataset_dict, dataset_dict_curr)
+        
     data_encodings = read_and_process(args, tokenizer, dataset_dict, data_dir, dataset_name, split_name)
+
     return util.QADataset(data_encodings, train=(split_name=='train')), dataset_dict
 
 ## this is the main function
@@ -447,21 +449,40 @@ def main():
     
     tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
     
-    # if training, then start a new Domain QA model or a distrilBert Model
+    # if training, then start a new Domain QA model or a distrilBert Model/ load MLM pretrained model
     if args.do_train:
-        print('fine tunning should not be here')
+        if args.pretrained_model:
+            if args.adv_training:
+                print('loading pretrained adv model')
+                model = advModel.DomainQA(num_classes= args.class_number,
+                                           hidden_size=768,
+                                           num_layers=3, 
+                                           dropout=0.1, 
+                                           dis_lambda=args.dis_lambda,
+                                           concat=False, 
+                                           anneal=False,
+                                           pre_trained = args.pretrained_model):
+                
+            else:
+                print('loading pretrained baseline model')
+                model = DistilBertForQuestionAnswering.from_pretrained(args.pretrained_model)
+            
         ## it is from hugging face
-        if args.adv_training:
-            model = advModel.DomainQA(num_classes= args.class_number,
-                                       hidden_size=768,
-                                       num_layers=3, 
-                                       dropout=0.1, 
-                                       dis_lambda=args.dis_lambda,
-                                       concat=False, 
-                                       anneal=False)
         else:
-            model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")   
-        
+            if args.adv_training:
+                print('building Adv model')
+                model = advModel.DomainQA(num_classes= args.class_number,
+                                           hidden_size=768,
+                                           num_layers=3, 
+                                           dropout=0.1, 
+                                           dis_lambda=args.dis_lambda,
+                                           concat=False, 
+                                           anneal=False,
+                                           pre_trained = None)
+            else:
+                print('building baseline model')
+                model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")   
+
         # make save/ folder
         if not os.path.exists(args.save_dir):
             os.makedirs(args.save_dir)
@@ -497,7 +518,7 @@ def main():
             best_scores = trainer.train_baseline(model, train_loader, val_loader, val_dict)
             
     if args.do_finetuning:
-        print('go to finetuning')
+        
         # save log for tensorboard
         log = util.get_logger(args.save_dir, 'log_finetuning')
         log.info(f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}')

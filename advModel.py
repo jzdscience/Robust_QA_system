@@ -49,13 +49,17 @@ class DomainDiscriminator(nn.Module):
 
 
 class DomainQA(nn.Module):
-    def __init__(self, bert_name_or_config = "distilbert-base-uncased", num_classes=6, hidden_size=768,
-                 num_layers=3, dropout=0.1, dis_lambda=0.5, concat=False, anneal=False):
+    def __init__(self, args, bert_name_or_config = "distilbert-base-uncased", num_classes=6, hidden_size=768,
+                 num_layers=3, dropout=0.1, dis_lambda=0.5, concat=False, anneal=False, pre_trained = None):
         super(DomainQA, self).__init__()
         
-        self.config = DistilBertConfig.from_pretrained('distilbert-base-uncased', output_hidden_states=True)
-        self.bert = DistilBertForQuestionAnswering.from_pretrained('distilbert-base-uncased', config=self.config )
-
+        if pre_trained is None:
+            self.config = DistilBertConfig.from_pretrained('distilbert-base-uncased', output_hidden_states=True)
+            self.bert = DistilBertForQuestionAnswering.from_pretrained('distilbert-base-uncased', config=self.config )
+        
+        else:
+            self.bert = DistilBertForQuestionAnswering.from_pretrained(args.pretrained_model)
+            
         self.qa_outputs = nn.Linear(hidden_size, 2)   # 768 *2
         # init weight
         self.qa_outputs.weight.data.normal_(mean=0.0, std=0.02)
