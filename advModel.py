@@ -4,7 +4,7 @@ import torch.nn.functional as F
 # from pytorch_pretrained_bert import BertModel, BertConfig
 # from utils import kl_coef
 from util import kl_coef
-
+from collections import OrderedDict
 from transformers import DistilBertForQuestionAnswering
 from transformers import DistilBertConfig
 
@@ -19,6 +19,7 @@ class DomainDiscriminator(nn.Module):
                 input_dim = input_size
             else:
                 input_dim = hidden_size
+                
 #             hidden_layers.append(nn.Sequential(   
 #                 nn.Linear(input_dim, hidden_size),
 # #                 nn.BatchNorm1d(num_features=hidden_size),
@@ -36,8 +37,6 @@ class DomainDiscriminator(nn.Module):
         hidden_layers.append(nn.Sequential(OrderedDict([  ('output', nn.Linear(hidden_size, num_classes))])))
         self.hidden_layers = nn.ModuleList(hidden_layers)
             
-
-
     def forward(self, x):
         # forward pass
         for i in range(self.num_layers - 1):
@@ -49,7 +48,7 @@ class DomainDiscriminator(nn.Module):
 
 
 class DomainQA(nn.Module):
-    def __init__(self, args, bert_name_or_config = "distilbert-base-uncased", num_classes=6, hidden_size=768,
+    def __init__(self, bert_name_or_config = "distilbert-base-uncased", num_classes=6, hidden_size=768,
                  num_layers=3, dropout=0.1, dis_lambda=0.5, concat=False, anneal=False, pre_trained = None):
         super(DomainQA, self).__init__()
         
@@ -58,7 +57,9 @@ class DomainQA(nn.Module):
             self.bert = DistilBertForQuestionAnswering.from_pretrained('distilbert-base-uncased', config=self.config )
         
         else:
-            self.bert = DistilBertForQuestionAnswering.from_pretrained(args.pretrained_model)
+            print('loading pretrained model')
+            self.config = DistilBertConfig.from_pretrained('distilbert-base-uncased', output_hidden_states=True)
+            self.bert = DistilBertForQuestionAnswering.from_pretrained(pre_trained, config=self.config )
             
         self.qa_outputs = nn.Linear(hidden_size, 2)   # 768 *2
         # init weight
@@ -115,6 +116,8 @@ class DomainQA(nn.Module):
         
         #### distilBert output is (start_scores torch.Size([16, 384]) , end_scores torch.Size([16, 384])) tuple,
         ####                      tuple of 7 tensors
+#         import pdb; pdb.set_trace()
+        
         _, _, hidden_states = self.bert(input_ids,  attention_mask, return_dict = False)
         # try: take the last hidden states
         sequence_output = hidden_states[-1]

@@ -9,4 +9,4 @@
 source ~/.bashrc
 conda activate robustqa
 
-python train.py --do-eval --save-dir save/baseline-01 --eval-dir datasets/oodomain_val --visualize-predictions 
+python train.py --do-eval --save-dir save/baseline-01-finetuning-aug-freeze --eval-dir datasets/oodomain_val --visualize-predictions 

@@ -9,4 +9,4 @@
 source ~/.bashrc
 conda activate robustqa
 
-python train.py --do-finetuning --run-name baseline_finetuning --visualize-predictions --save-dir save/baseline-01-finetuning --train-datasets race,relation_extraction,duorc --train-dir datasets/oodomain_train --val-dir datasets/oodomain_val --num-epochs 20 --eval-every 100 --freeze --lr 3e-6
+python train.py --do-finetuning --run-name baseline_finetuning --visualize-predictions --save-dir save/baseline-02-finetuning-unfreeze --train-datasets race,relation_extraction,duorc --train-dir datasets/oodomain_train --val-dir datasets/oodomain_val --num-epochs 20 --eval-every 20 --lr 3e-6

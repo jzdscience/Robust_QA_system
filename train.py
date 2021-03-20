@@ -461,7 +461,7 @@ def main():
                                            dis_lambda=args.dis_lambda,
                                            concat=False, 
                                            anneal=False,
-                                           pre_trained = args.pretrained_model):
+                                           pre_trained = args.pretrained_model)
                 
             else:
                 print('loading pretrained baseline model')
