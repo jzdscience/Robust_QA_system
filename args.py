@@ -16,7 +16,7 @@ def get_train_test_args():
     parser.add_argument('--train-dir', type=str, default='datasets/indomain_train')
     parser.add_argument('--val-dir', type=str, default='datasets/indomain_val')
     parser.add_argument('--eval-dir', type=str, default='datasets/oodomain_test')
-    parser.add_argument('--eval-datasets', type=str, default='race,relation_extraction,duorc')
+    parser.add_argument('--eval-datasets', type=str, default='race_orig,relation_extraction_orig,duorc')
     parser.add_argument('--do-train', action='store_true')
     parser.add_argument('--do-eval', action='store_true')
     parser.add_argument('--sub-file', type=str, default='')
